@@ -1,5 +1,6 @@
-# UR2-Robot-Arm-C-Sharp-Code
+# Unified Robotics II Robot Arm C# Code
 Source Code for the UI and Vision processing portion of UR2 Term Project
+
 
 Launching the program and Run the Robot
 ----
@@ -11,3 +12,8 @@ Connect the Arduino and select the serial port under the Open COM drop down
 Enable the Run Robot check box
 To begin the process, click the Home button
 The Robot "should" now continue running until it runs out of shapes or the Run Robot checkbox was clicked again.
+
+Contributor
+-
+Bryan Walther
+  Student, Lawrence Technological University
