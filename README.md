@@ -1,5 +1,7 @@
 # Unified Robotics II Robot Arm C# Code
 
+Was having dificulties with VS: Most recent version is found under the Primary Branch
+
 Overview
 -
 Design, Build, and Program a small robotic arm capable of locating, picking up, and sorting triangles and squares.
