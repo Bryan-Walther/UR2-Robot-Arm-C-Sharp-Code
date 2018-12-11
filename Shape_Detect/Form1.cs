@@ -123,7 +123,9 @@ namespace Shape_Detect
                 #endregion Basic Image Handling
 
                 #region Canny and edge detection for ROI
-                /* Edge detection, credit emguCV wiki 
+                /* 
+                 * Edge detection, credit emguCV wiki 
+                 * These shapes are used to find the ROI, which will choose the largest from those selected
                  */
                 double cannyThresholdLinking1 = 120.0;
                 UMat cannyEdges1 = new UMat();
@@ -166,8 +168,8 @@ namespace Shape_Detect
 
                         Resize = new Rectangle(boundingBox.X + edgeExtra, boundingBox.Y + edgeExtra, boundingBox.Width - 2 * edgeExtra, boundingBox.Height - 2 * edgeExtra);
 
-                        pixInch = roiImg.Height / 8.5;
-                        botPixLocation = CalculatePixInch(roiImg, pixInch);
+                        pixInch = roiImg.Height / 8.5;  //This assumes 8.5x11 sheet of paper, then using the image height (assumed to be the paper) to be get a pixels per inch value
+                        botPixLocation = CalculatePixInch(roiImg, pixInch); //the position of the forward middle point of the robot in pixels, used to calculate some things later on
 
                         reCalculateROI = false;
                     }
@@ -198,7 +200,10 @@ namespace Shape_Detect
 
 
                             #region Canny and edge detection
-                            //edge detection within ROI size
+                            /*
+                             * edge detection within ROI size
+                             * Again credit to emguCV wiki for the edge and shape detection
+                            */
                             double cannyThresholdLinking = 120.0;
                             UMat cannyEdges = new UMat();
                             CvInvoke.Canny(uimage, cannyEdges, cannyThreshold, cannyThresholdLinking);
@@ -247,7 +252,7 @@ namespace Shape_Detect
                                                 for (int j = 0; j < edges.Length; j++)
                                                 {
                                                     double angle = Math.Abs(edges[(j + 1) % edges.Length].GetExteriorAngleDegree(edges[j]));
-                                                    if (angle < 80 || angle > 100)
+                                                    if (angle < 80 || angle > 100) //ensure that the angles of the quadralateral are (roughly) 90deg
                                                     {
                                                         isRectangle = false;
                                                         break;
@@ -267,19 +272,32 @@ namespace Shape_Detect
                             bool targetPoint = true;
 
                             Image<Bgr, Byte> triangleRectangleImage = img.CopyBlank();
-                            int ij = 0;
+                            int triangleCount = 0;
                             foreach (Triangle2DF triangle in triangleList)
                             {
-                                if (ij > 0) //Duplicate prevention
+                                if (triangleCount > 0) //Duplicate prevention
+                                /* 
+                                 * For all shapes, check to see if the center is too close to the previous shape's center (if its the same shape, just inside/outside, the centers should be the same)
+                                 * ignore the ones that are too close together
+                                 * for all other shaopes, outline and mark the center point
+                                 */
                                 {
-                                    if (((Math.Abs(triangle.Centeroid.X - triangleList[ij - 1].Centeroid.X) > 5) || (Math.Abs(triangle.Centeroid.Y - triangleList[ij - 1].Centeroid.Y) > 5)))
+
+                                    if (((Math.Abs(triangle.Centeroid.X - triangleList[triangleCount - 1].Centeroid.X) > 5) || (Math.Abs(triangle.Centeroid.Y - triangleList[triangleCount - 1].Centeroid.Y) > 5)))
                                     {
                                         triangleRectangleImage.Draw(triangle, new Bgr(Color.LightBlue), 2);
 
                                         triangleRectangleImage.Draw(new CircleF(new Point((int)triangle.Centeroid.X, (int)triangle.Centeroid.Y), 1), new Bgr(Color.Blue), 2);
                                     }
                                 }
-                                else if (ij == 0)
+                                else if (triangleCount == 0)
+                                /*
+                                 * The code chooses the first shape in the list as the target (and as the first shape to reference back duplicate prevention)
+                                 * Then, if the first shape is the Target to be picked up, it colors the center dot a different color and passes on the center coords to be calculated and sent to the Arduino
+                                 * also draws a pretty line from the front center of the 'robot' to the center line
+                                 * 
+                                 * If the first shape is not the target (should never happen for triangles, but eh, better safe than confused as to why it broke), treat as the other shapes above
+                                 */
                                 {
                                     triangleRectangleImage.Draw(triangle, new Bgr(Color.LightBlue), 2);
 
@@ -297,24 +315,36 @@ namespace Shape_Detect
                                         triangleRectangleImage.Draw(new CircleF(new Point((int)triangle.Centeroid.X, (int)triangle.Centeroid.Y), 1), new Bgr(Color.Blue), 2);
                                     }
                                 }
-                                ij++;
+                                triangleCount++;
                             }
-                            //ij lists total number of shapes found (x2 due to interior/exterior detected)
-                            Invoke(new Action(() => { labelTriagNumb.Text = $"Number of Triangles: {ij / 2}"; }));
+                            //triangleCount lists total number of triangle found (x2 due to interior/exterior detected)
+                            Invoke(new Action(() => { labelTriagNumb.Text = $"Number of Triangles: {triangleCount / 2}"; }));
 
-                            ij = 0;
+                            int boxCount = 0;
                             foreach (RotatedRect box in boxList)
                             {
-                                if (ij > 0)
+                                if (boxCount > 0)
+                                /* 
+                                 * For all shapes, check to see if the center is too close to the previous shape's center (if its the same shape, just inside/outside, the centers should be the same)
+                                 * ignore the ones that are too close together
+                                 * for all other shaopes, outline and mark the center point
+                                 */
                                 {
-                                    if (((Math.Abs(box.Center.X - boxList[ij - 1].Center.X) > 5) || (Math.Abs(box.Center.Y - boxList[ij - 1].Center.Y) > 5)))
+                                    if (((Math.Abs(box.Center.X - boxList[boxCount - 1].Center.X) > 5) || (Math.Abs(box.Center.Y - boxList[boxCount - 1].Center.Y) > 5)))
                                     {
                                         triangleRectangleImage.Draw(box, new Bgr(Color.DarkOrange), 2);
 
                                         triangleRectangleImage.Draw(new CircleF(new Point((int)box.Center.X, (int)box.Center.Y), 1), new Bgr(Color.Orange), 2);
                                     }
                                 }
-                                else if (ij == 0)
+                                else if (boxCount == 0)
+                                /*
+                                * The code chooses the first shape in the list as the target (and as the first shape to reference back duplicate prevention)
+                                * Then, if the first shape is the Target to be picked up, it colors the center dot a different color and passes on the center coords to be calculated and sent to the Arduino
+                                * also draws a pretty line from the front center of the 'robot' to the center line
+                                * 
+                                * If the first shape is not the target (pretty much any time there is a triangle on the board as well), treat as the other shapes above
+                                */
                                 {
                                     triangleRectangleImage.Draw(box, new Bgr(Color.DarkOrange), 2);
 
@@ -333,17 +363,26 @@ namespace Shape_Detect
                                         triangleRectangleImage.Draw(new CircleF(new Point((int)box.Center.X, (int)box.Center.Y), 1), new Bgr(Color.Orange), 2);
                                     }
                                 }
-                                ij++;
+                                boxCount++;
                             }
-                            Invoke(new Action(() => { labelBoxNumber.Text = $"Number of Boxes: {ij / 2}"; }));
+                            //once again, boxCount counst the inside and outside contours, thus the total number of boxes is half boxCount
+                            Invoke(new Action(() => { labelBoxNumber.Text = $"Number of Boxes: {boxCount / 2}"; }));
                             #endregion
 
                             #region drawCenterline
+                            /*
+                             * The most complex and super nessesary part of this whole code!!
+                             * No really!
+                             * 
+                             * yeah... it just draws a line down the center of the image so that debugging was easier.
+                             * It doesn't do much
+                             * I should call it Perry!
+                             */
                             triangleRectangleImage.Draw(new LineSegment2D(new Point((int)triangleRectangleImage.Width / 2, 0), new Point((int)triangleRectangleImage.Width / 2, (int)triangleRectangleImage.Height)), new Bgr(Color.LightCyan), 1);
                             #endregion
 
 
-                            Image_Shapes.Image = triangleRectangleImage.Bitmap;
+                            Image_Shapes.Image = triangleRectangleImage.Bitmap;//Draw the picture!
                             targetPoint = true;
                             break;
                         case 'd'://drop of points
@@ -357,29 +396,33 @@ namespace Shape_Detect
                 }
                 #endregion Run Robot
 
-                Plain_Image.Image = Default.Bitmap;
+                Plain_Image.Image = Default.Bitmap; //draw the default and ROI images
                 roiBox.Image = roiImg.Bitmap;
             }
         }
 
 
         #region SendCommands
+        /*
+         * Anything and Everything to do with sending the commands to the robot
+         * Includes the Drop, Home and Magnet Commands as well as coordinate calculator and sender
+         */
         private void SendDropCommand()
         {
             switch (selectedShape)
             {
-                case 't':
-                    sendCoords(8, -90);
+                case 't'://trianngles
+                    sendCoords(8, -90); //90deg to the left of center
                     break;
-                case 'b':
-                    sendCoords(8, 90);
+                case 'b'://boxes
+                    sendCoords(8, 90); //90deg to the right of center
                     break;
                 default:
                     break;
             }
         }
 
-        private void SendHomeCommand()
+        private void SendHomeCommand() //probably over complicated, but hey, I like that it works. Just send the command <H>
         {
             string temp;
 
@@ -394,35 +437,35 @@ namespace Shape_Detect
             }
         }
 
-        private int CalculatePixInch(Image<Bgr, byte> input, double pixInch)
+        private int CalculatePixInch(Image<Bgr, byte> input, double pixInch) //used in finding the robot's location in pixels from way above
         {
-            double pixToBot = (7.4) * pixInch; //7.75 Original = too long
+            double pixToBot = (7.75) * pixInch; //robot should be around 7.75 inches away from the bottom of the page, If the robot is consistently missing, this is a good number to take a look at
             return (int)(pixToBot + input.Height);
         }
 
-        private void calculateCoords(double distVert, double distHorz, double pixInch)
+        private void calculateCoords(double distVert, double distHorz, double pixInch)//Alot of the math was already done when the function was called, but this takes the distance from the robot in x and y and gives a dist and angle
         {
             double pixDist = Math.Sqrt(Math.Pow(distVert,2) + Math.Pow(distHorz, 2));
             double inchDist = pixDist / pixInch;
 
             double Theta = -Math.Atan2(distHorz,distVert) * (180/Math.PI);
 
-            Invoke(new Action(() => {
-                labelAngleToBot.Text = $"Target Angle to Bot (deg): {(int)Theta}";
-                labelDistFromBot.Text = $"Target Dist to Bot (in): {(int)inchDist}";
+            Invoke(new Action(() => { //just to see what it is thinking
+                labelAngleToBot.Text = $"Target Angle to Bot (deg): {Math.Round(Theta, 1)}";
+                labelDistFromBot.Text = $"Target Dist to Bot (in): {Math.Round(inchDist, 1)}";
             }));
-            sendCoords(inchDist, Theta);
+            sendCoords(inchDist, Theta); //Calls next function to actually send the commands onwards!
         }
 
         //Send Coords to Arm
         private void sendCoords(double targetDist, double targetTheta)
         {
             string temp;
-            double targetY = 2.5;
+            double targetY = 2.5; // the pick up and drop off heights dont need to be different, so they arn't. If it is too low or too high for any reason, change this number here
 
             if (serialPort.IsOpen)
             {
-                temp = $"<{Math.Round(targetDist,1)} {targetY} {Math.Round(targetTheta,1)}>";
+                temp = $"<{Math.Round(targetDist,1)} {targetY} {Math.Round(targetTheta,1)}>";//sends the command in the format <XXX.x YYY.y TTT.t>
                 Console.WriteLine(temp);
                 
                 byte[] buffer = Encoding.ASCII.GetBytes(temp);
@@ -430,7 +473,7 @@ namespace Shape_Detect
             }
         }
 
-        private void sendMagnetCommand()
+        private void sendMagnetCommand() //back to the easy ones, just sends the command <M>
         {
             if (serialPort.IsOpen)
             {
@@ -446,7 +489,7 @@ namespace Shape_Detect
         {
             while (true)
             {
-                lock (serialLockObj)
+                lock (serialLockObj) //Thread managing
                 {
                     if (!allowRun)
                     {
@@ -473,15 +516,15 @@ namespace Shape_Detect
                         serialReturn.Text = $"Returned Point Data: {msg}";
                     }));
                     Console.WriteLine(msg);
-                    if (msg.Length == 0)
+                    if (msg.Length == 0) //arduino sent empty command or gibberish
                     {
                         continue;
                     }
-                    else if (msg.Substring(0,1) == "W")
+                    else if (msg.Substring(0,1) == "W") //I don't think this is even still in use, but I don't remember. So it stays!
                     {
                         requestedCommand = false;
                     }
-                    else if (msg.Substring(0, 1) == "N")
+                    else if (msg.Substring(0, 1) == "N")//Arduino sent next command request
                     {
                         requestedCommand = true;
                         if (commandCompleted)
@@ -508,6 +551,10 @@ namespace Shape_Detect
         #endregion SerialReciving
 
         #region InputHandling
+        /*
+         * Credit to Zack Carey
+         * Though he informed me that this was outdated as soon as he sent it too me... Thanks pal
+         */
         private void p1ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (videoIn.setImage("Video Files\\P1.png"))
@@ -542,8 +589,12 @@ namespace Shape_Detect
         #endregion InoutHandling
 
         #region UI_Elements
+        /*
+         * Contains all the buttons and switches that the User can play wis
+         */
         private void comboCOMList_DropDown(object sender, EventArgs e)
         {
+            //update the drop down list everytime it is open to get the most recent list of serial ports
             ports = SerialPort.GetPortNames();
 
             comboCOMList.Items.Clear();
@@ -555,6 +606,7 @@ namespace Shape_Detect
 
         private void comboCOMList_SelectedIndexChanged(object sender, EventArgs e)
         {
+            //If an existing communication is open, close it; then open a new com on selected port
             if (serialPort.IsOpen)
             {
                 lock (serialLockObj)
@@ -597,23 +649,23 @@ namespace Shape_Detect
         }
 
         private void boxOverRideCommand_CheckedChanged(object sender, EventArgs e)
-        {
+        {//user may or may not have robot attached. They just wanted to test the shape detection
             OverrideMath = boxOverRideCommand.Checked;
             motionIndex = 1;
         }
 
         private void buttonHome_Click(object sender, EventArgs e)
-        {
+        { //send home command; Also used to start the robot sequence (as homing the robot tells it to prompt next command)
             SendHomeCommand();
         }
 
         private void buttonCalcROI_Click(object sender, EventArgs e)
-        {
+        {//Does what it says on the tin...
             reCalculateROI = true;
         }
 
         private void checkBoxRunRobot_CheckedChanged(object sender, EventArgs e)
-        {
+        {//Enables the robot to be run, acts as a safty switch to prevent new commands from being sent
             RunRobot = checkBoxRunRobot.Checked;
             motionIndex = 0;
         }

@@ -85,28 +85,28 @@
             // p1ToolStripMenuItem
             // 
             this.p1ToolStripMenuItem.Name = "p1ToolStripMenuItem";
-            this.p1ToolStripMenuItem.Size = new System.Drawing.Size(140, 22);
+            this.p1ToolStripMenuItem.Size = new System.Drawing.Size(115, 22);
             this.p1ToolStripMenuItem.Text = "P1";
             this.p1ToolStripMenuItem.Click += new System.EventHandler(this.p1ToolStripMenuItem_Click);
             // 
             // p2ToolStripMenuItem
             // 
             this.p2ToolStripMenuItem.Name = "p2ToolStripMenuItem";
-            this.p2ToolStripMenuItem.Size = new System.Drawing.Size(140, 22);
+            this.p2ToolStripMenuItem.Size = new System.Drawing.Size(115, 22);
             this.p2ToolStripMenuItem.Text = "P2";
             this.p2ToolStripMenuItem.Click += new System.EventHandler(this.p2ToolStripMenuItem_Click);
             // 
             // p3ToolStripMenuItem
             // 
             this.p3ToolStripMenuItem.Name = "p3ToolStripMenuItem";
-            this.p3ToolStripMenuItem.Size = new System.Drawing.Size(140, 22);
+            this.p3ToolStripMenuItem.Size = new System.Drawing.Size(115, 22);
             this.p3ToolStripMenuItem.Text = "P3";
             this.p3ToolStripMenuItem.Click += new System.EventHandler(this.p3ToolStripMenuItem_Click);
             // 
             // camera1ToolStripMenuItem
             // 
             this.camera1ToolStripMenuItem.Name = "camera1ToolStripMenuItem";
-            this.camera1ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.camera1ToolStripMenuItem.Size = new System.Drawing.Size(115, 22);
             this.camera1ToolStripMenuItem.Text = "Camera";
             this.camera1ToolStripMenuItem.Click += new System.EventHandler(this.camera1ToolStripMenuItem_Click);
             // 
@@ -160,6 +160,7 @@
             this.comboCOMList.Name = "comboCOMList";
             this.comboCOMList.Size = new System.Drawing.Size(121, 21);
             this.comboCOMList.TabIndex = 13;
+            this.comboCOMList.Text = "Open COM";
             this.comboCOMList.DropDown += new System.EventHandler(this.comboCOMList_DropDown);
             this.comboCOMList.SelectedIndexChanged += new System.EventHandler(this.comboCOMList_SelectedIndexChanged);
             // 
